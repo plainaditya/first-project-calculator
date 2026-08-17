@@ -1,8 +1,12 @@
 const display = document.getElementById("display");
 const expressionDisplay = document.getElementById("expression");
 const keys = document.querySelectorAll(".key");
+const themeToggle = document.getElementById("themeToggle");
+const root = document.documentElement;
+const themeMeta = document.querySelector('meta[name="theme-color"]');
 
 const MAX_INPUT_LENGTH = 16;
+const THEME_KEY = "calculator-theme";
 
 let currentValue = "0";
 let previousValue = null;
@@ -18,6 +22,47 @@ const operatorSymbols = {
     "*": "×",
     "/": "÷"
 };
+
+function applyTheme(theme) {
+    const isLight = theme === "light";
+    root.dataset.theme = isLight ? "light" : "dark";
+
+    if (themeToggle) {
+        themeToggle.setAttribute("aria-checked", String(isLight));
+        themeToggle.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode");
+    }
+
+    if (themeMeta) {
+        themeMeta.setAttribute("content", isLight ? "#edf3f8" : "#070b12");
+    }
+}
+
+function initializeTheme() {
+    let savedTheme = null;
+
+    try {
+        savedTheme = localStorage.getItem(THEME_KEY);
+    } catch {
+        // Storage may be unavailable in privacy-restricted environments.
+    }
+
+    if (savedTheme !== "light" && savedTheme !== "dark") {
+        savedTheme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+
+    applyTheme(savedTheme);
+}
+
+function toggleTheme() {
+    const nextTheme = root.dataset.theme === "light" ? "dark" : "light";
+    applyTheme(nextTheme);
+
+    try {
+        localStorage.setItem(THEME_KEY, nextTheme);
+    } catch {
+        // Theme still changes for the current session if storage is unavailable.
+    }
+}
 
 function updateDisplay() {
     // Final safety guard: never allow the displayed number to exceed 16 characters.
@@ -215,6 +260,10 @@ function flashKey(value) {
     window.setTimeout(() => key.classList.remove("keyboard-active"), 120);
 }
 
+if (themeToggle) {
+    themeToggle.addEventListener("click", toggleTheme);
+}
+
 keys.forEach((key) => {
     key.addEventListener("click", () => {
         const { value, action } = key.dataset;
@@ -259,4 +308,5 @@ document.addEventListener("keydown", (event) => {
     }
 });
 
+initializeTheme();
 updateDisplay();
