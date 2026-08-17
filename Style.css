@@ -22,7 +22,7 @@
 }
 
 * { box-sizing: border-box; }
-html { min-height: 100%; }
+html { min-height: 100%; overflow-x: hidden; }
 
 body {
     min-width: 320px;
@@ -31,6 +31,7 @@ body {
     padding: 1rem;
     display: grid;
     place-items: center;
+    overflow-x: hidden;
     color: var(--text);
     font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     background:
@@ -52,11 +53,12 @@ body::before {
 }
 
 button { -webkit-tap-highlight-color: transparent; }
-.app-shell { width: min(100%, 28rem); }
+.app-shell { width: min(100%, 28rem); min-width: 0; }
 
 .calculator {
     position: relative;
     width: 100%;
+    min-width: 0;
     padding: 1.2rem;
     overflow: hidden;
     border: 1px solid var(--line);
@@ -116,8 +118,11 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 
 .display-shell {
+    width: 100%;
+    min-width: 0;
     margin-bottom: 1rem;
     padding: 0.95rem;
+    overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 1.1rem;
     background: rgba(255, 255, 255, 0.018);
@@ -135,6 +140,7 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .display-expression {
     min-height: 1.2rem;
+    width: 100%;
     overflow: hidden;
     padding: 0 0.15rem;
     color: var(--muted);
@@ -149,6 +155,7 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .display {
     width: 100%;
+    min-width: 0;
     min-height: 4.8rem;
     display: flex;
     align-items: flex-end;
@@ -162,7 +169,8 @@ button { -webkit-tap-highlight-color: transparent; }
     line-height: 1;
     letter-spacing: -0.055em;
     text-align: right;
-    word-break: break-all;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .keys {
