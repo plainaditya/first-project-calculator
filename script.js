@@ -1,13 +1,29 @@
 const display = document.getElementById("display");
+const expressionDisplay = document.getElementById("expression");
 const keys = document.querySelectorAll(".key");
 
 let currentValue = "0";
 let previousValue = null;
 let operator = null;
 let waitingForNewNumber = false;
+let lastExpression = "";
+
+const operatorSymbols = {
+    "+": "+",
+    "-": "−",
+    "*": "×",
+    "/": "÷"
+};
 
 function updateDisplay() {
     display.textContent = currentValue;
+
+    if (previousValue !== null && operator) {
+        const expressionValue = waitingForNewNumber ? "" : currentValue;
+        expressionDisplay.textContent = `${formatNumber(previousValue)} ${operatorSymbols[operator]} ${expressionValue}`.trim();
+    } else {
+        expressionDisplay.textContent = lastExpression;
+    }
 }
 
 function inputNumber(number) {
@@ -20,6 +36,7 @@ function inputNumber(number) {
         currentValue += number;
     }
 
+    lastExpression = "";
     updateDisplay();
 }
 
@@ -31,6 +48,7 @@ function inputDecimal() {
         currentValue += ".";
     }
 
+    lastExpression = "";
     updateDisplay();
 }
 
@@ -43,8 +61,6 @@ function calculate(firstNumber, secondNumber, selectedOperator) {
         if (secondNumber === 0) return null;
         return firstNumber / secondNumber;
     }
-
-    return null;
 }
 
 function chooseOperator(nextOperator) {
@@ -54,6 +70,7 @@ function chooseOperator(nextOperator) {
 
     if (operator && waitingForNewNumber) {
         operator = nextOperator;
+        updateDisplay();
         return;
     }
 
@@ -66,6 +83,7 @@ function chooseOperator(nextOperator) {
             currentValue = "Error";
             previousValue = null;
             operator = null;
+            lastExpression = "Calculation error";
             updateDisplay();
             return;
         }
@@ -76,23 +94,31 @@ function chooseOperator(nextOperator) {
 
     operator = nextOperator;
     waitingForNewNumber = true;
+    lastExpression = "";
     updateDisplay();
 }
 
 function showResult() {
     if (!operator || waitingForNewNumber || previousValue === null) return;
 
-    const result = calculate(previousValue, Number(currentValue), operator);
+    const firstNumber = previousValue;
+    const secondNumber = Number(currentValue);
+    const selectedOperator = operator;
+    const result = calculate(firstNumber, secondNumber, selectedOperator);
+    const expression = `${formatNumber(firstNumber)} ${operatorSymbols[selectedOperator]} ${formatNumber(secondNumber)} =`;
 
     if (result === null || !Number.isFinite(result)) {
         currentValue = "Error";
+        lastExpression = expression;
     } else {
         currentValue = formatNumber(result);
+        lastExpression = expression;
     }
 
     previousValue = null;
     operator = null;
     waitingForNewNumber = true;
+
     updateDisplay();
 }
 
@@ -105,6 +131,8 @@ function clearCalculator() {
     previousValue = null;
     operator = null;
     waitingForNewNumber = false;
+    lastExpression = "";
+
     updateDisplay();
 }
 
@@ -118,6 +146,7 @@ function deleteLastCharacter() {
             : "0";
     }
 
+    lastExpression = "";
     updateDisplay();
 }
 
@@ -137,41 +166,12 @@ function handleInput(value) {
     }
 }
 
-function getKeyForKeyboardInput(value) {
-    if (/^\d$/.test(value) || value === ".") {
-        return [...keys].find((key) => key.dataset.value === value);
-    }
-
-    if (["+", "-", "*", "/"].includes(value)) {
-        return [...keys].find((key) => key.dataset.value === value);
-    }
-
-    if (value === "Enter" || value === "=") {
-        return document.querySelector('[data-action="calculate"]');
-    }
-
-    if (value === "Backspace") {
-        return document.querySelector('[data-action="delete"]');
-    }
-
-    if (value === "Escape") {
-        return document.querySelector('[data-action="clear"]');
-    }
-
-    return null;
-}
-
-function animateKeyPress(value) {
-    const key = getKeyForKeyboardInput(value);
+function flashKey(value) {
+    const key = [...keys].find((button) => button.dataset.value === value);
     if (!key) return;
 
-    key.classList.remove("keyboard-active");
-    void key.offsetWidth;
     key.classList.add("keyboard-active");
-
-    window.setTimeout(() => {
-        key.classList.remove("keyboard-active");
-    }, 130);
+    window.setTimeout(() => key.classList.remove("keyboard-active"), 120);
 }
 
 keys.forEach((key) => {
@@ -190,18 +190,32 @@ keys.forEach((key) => {
     });
 });
 
-// Keyboard input updates the same calculator display as mouse/touch input.
 document.addEventListener("keydown", (event) => {
     const allowedKeys = [
-        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-        ".", "+", "-", "*", "/", "Enter", "=", "Backspace", "Escape"
+        "0", "1", "2", "3", "4",
+        "5", "6", "7", "8", "9",
+        ".", "+", "-", "*", "/",
+        "Enter", "Backspace", "Escape"
     ];
 
     if (!allowedKeys.includes(event.key)) return;
 
     event.preventDefault();
-    animateKeyPress(event.key);
     handleInput(event.key);
+
+    if (/^\d$/.test(event.key) || [".", "+", "-", "*", "/"].includes(event.key)) {
+        flashKey(event.key);
+    } else if (event.key === "Enter") {
+        flashKey("=");
+    } else if (event.key === "Backspace") {
+        const key = document.querySelector('[data-action="delete"]');
+        key?.classList.add("keyboard-active");
+        window.setTimeout(() => key?.classList.remove("keyboard-active"), 120);
+    } else if (event.key === "Escape") {
+        const key = document.querySelector('[data-action="clear"]');
+        key?.classList.add("keyboard-active");
+        window.setTimeout(() => key?.classList.remove("keyboard-active"), 120);
+    }
 });
 
 updateDisplay();
