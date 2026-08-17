@@ -20,6 +20,11 @@ const operatorSymbols = {
 };
 
 function updateDisplay() {
+    // Final safety guard: never allow the displayed number to exceed 16 characters.
+    if (currentValue !== "Error") {
+        currentValue = currentValue.slice(0, MAX_INPUT_LENGTH);
+    }
+
     display.textContent = currentValue;
 
     if (previousValue !== null && operator) {
@@ -40,6 +45,7 @@ function inputNumber(number) {
         currentValue += number;
     }
 
+    currentValue = currentValue.slice(0, MAX_INPUT_LENGTH);
     lastExpression = "";
     updateDisplay();
 }
@@ -52,6 +58,7 @@ function inputDecimal() {
         currentValue += ".";
     }
 
+    currentValue = currentValue.slice(0, MAX_INPUT_LENGTH);
     lastExpression = "";
     updateDisplay();
 }
@@ -98,7 +105,7 @@ function chooseOperator(nextOperator) {
         }
 
         previousValue = result;
-        currentValue = formatNumber(result);
+        currentValue = formatNumber(result).slice(0, MAX_INPUT_LENGTH);
     }
 
     operator = nextOperator;
