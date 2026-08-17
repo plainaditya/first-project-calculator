@@ -2,6 +2,8 @@ const display = document.getElementById("display");
 const expressionDisplay = document.getElementById("expression");
 const keys = document.querySelectorAll(".key");
 
+const MAX_INPUT_LENGTH = 16;
+
 let currentValue = "0";
 let previousValue = null;
 let operator = null;
@@ -34,7 +36,7 @@ function inputNumber(number) {
         waitingForNewNumber = false;
     } else if (currentValue === "0") {
         currentValue = number;
-    } else {
+    } else if (currentValue.length < MAX_INPUT_LENGTH) {
         currentValue += number;
     }
 
@@ -46,7 +48,7 @@ function inputDecimal() {
     if (currentValue === "Error" || waitingForNewNumber) {
         currentValue = "0.";
         waitingForNewNumber = false;
-    } else if (!currentValue.includes(".")) {
+    } else if (!currentValue.includes(".") && currentValue.length < MAX_INPUT_LENGTH) {
         currentValue += ".";
     }
 
@@ -70,8 +72,6 @@ function chooseOperator(nextOperator) {
 
     if (currentValue === "Error") return;
 
-    // Starting a new calculation after a completed result should not reuse
-    // the previous repeat operation.
     if (operator === null && previousValue === null && waitingForNewNumber) {
         lastOperator = null;
         lastOperand = null;
@@ -108,8 +108,6 @@ function chooseOperator(nextOperator) {
 }
 
 function showResult() {
-    // Pressing Enter/= again after a completed calculation repeats the
-    // previous operation using the previous result as the first number.
     if (!operator && previousValue === null && waitingForNewNumber && lastOperator !== null && lastOperand !== null) {
         const firstNumber = Number(currentValue);
         const result = calculate(firstNumber, lastOperand, lastOperator);
@@ -121,7 +119,7 @@ function showResult() {
             lastOperator = null;
             lastOperand = null;
         } else {
-            currentValue = formatNumber(result);
+            currentValue = formatNumber(result).slice(0, MAX_INPUT_LENGTH);
             lastExpression = expression;
         }
 
@@ -143,7 +141,7 @@ function showResult() {
         lastOperator = null;
         lastOperand = null;
     } else {
-        currentValue = formatNumber(result);
+        currentValue = formatNumber(result).slice(0, MAX_INPUT_LENGTH);
         lastExpression = expression;
         lastOperator = selectedOperator;
         lastOperand = secondNumber;
