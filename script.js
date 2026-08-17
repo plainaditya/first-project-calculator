@@ -7,6 +7,8 @@ let previousValue = null;
 let operator = null;
 let waitingForNewNumber = false;
 let lastExpression = "";
+let lastOperator = null;
+let lastOperand = null;
 
 const operatorSymbols = {
     "+": "+",
@@ -68,6 +70,13 @@ function chooseOperator(nextOperator) {
 
     if (currentValue === "Error") return;
 
+    // Starting a new calculation after a completed result should not reuse
+    // the previous repeat operation.
+    if (operator === null && previousValue === null && waitingForNewNumber) {
+        lastOperator = null;
+        lastOperand = null;
+    }
+
     if (operator && waitingForNewNumber) {
         operator = nextOperator;
         updateDisplay();
@@ -99,6 +108,27 @@ function chooseOperator(nextOperator) {
 }
 
 function showResult() {
+    // Pressing Enter/= again after a completed calculation repeats the
+    // previous operation using the previous result as the first number.
+    if (!operator && previousValue === null && waitingForNewNumber && lastOperator !== null && lastOperand !== null) {
+        const firstNumber = Number(currentValue);
+        const result = calculate(firstNumber, lastOperand, lastOperator);
+        const expression = `${formatNumber(firstNumber)} ${operatorSymbols[lastOperator]} ${formatNumber(lastOperand)} =`;
+
+        if (result === null || !Number.isFinite(result)) {
+            currentValue = "Error";
+            lastExpression = expression;
+            lastOperator = null;
+            lastOperand = null;
+        } else {
+            currentValue = formatNumber(result);
+            lastExpression = expression;
+        }
+
+        updateDisplay();
+        return;
+    }
+
     if (!operator || waitingForNewNumber || previousValue === null) return;
 
     const firstNumber = previousValue;
@@ -110,9 +140,13 @@ function showResult() {
     if (result === null || !Number.isFinite(result)) {
         currentValue = "Error";
         lastExpression = expression;
+        lastOperator = null;
+        lastOperand = null;
     } else {
         currentValue = formatNumber(result);
         lastExpression = expression;
+        lastOperator = selectedOperator;
+        lastOperand = secondNumber;
     }
 
     previousValue = null;
@@ -132,6 +166,8 @@ function clearCalculator() {
     operator = null;
     waitingForNewNumber = false;
     lastExpression = "";
+    lastOperator = null;
+    lastOperand = null;
 
     updateDisplay();
 }
