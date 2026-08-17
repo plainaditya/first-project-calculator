@@ -6,11 +6,9 @@ let previousValue = null;
 let operator = null;
 let waitingForNewNumber = false;
 
-
 function updateDisplay() {
     display.textContent = currentValue;
 }
-
 
 function inputNumber(number) {
     if (currentValue === "Error" || waitingForNewNumber) {
@@ -25,7 +23,6 @@ function inputNumber(number) {
     updateDisplay();
 }
 
-
 function inputDecimal() {
     if (currentValue === "Error" || waitingForNewNumber) {
         currentValue = "0.";
@@ -37,21 +34,18 @@ function inputDecimal() {
     updateDisplay();
 }
 
-
 function calculate(firstNumber, secondNumber, selectedOperator) {
     if (selectedOperator === "+") return firstNumber + secondNumber;
     if (selectedOperator === "-") return firstNumber - secondNumber;
     if (selectedOperator === "*") return firstNumber * secondNumber;
 
     if (selectedOperator === "/") {
-        if (secondNumber === 0) {
-            return null;
-        }
-
+        if (secondNumber === 0) return null;
         return firstNumber / secondNumber;
     }
-}
 
+    return null;
+}
 
 function chooseOperator(nextOperator) {
     const inputValue = Number(currentValue);
@@ -85,7 +79,6 @@ function chooseOperator(nextOperator) {
     updateDisplay();
 }
 
-
 function showResult() {
     if (!operator || waitingForNewNumber || previousValue === null) return;
 
@@ -100,25 +93,20 @@ function showResult() {
     previousValue = null;
     operator = null;
     waitingForNewNumber = true;
-
     updateDisplay();
 }
-
 
 function formatNumber(number) {
     return Number(number.toFixed(10)).toString();
 }
-
 
 function clearCalculator() {
     currentValue = "0";
     previousValue = null;
     operator = null;
     waitingForNewNumber = false;
-
     updateDisplay();
 }
-
 
 function deleteLastCharacter() {
     if (currentValue === "Error" || waitingForNewNumber) {
@@ -132,7 +120,6 @@ function deleteLastCharacter() {
 
     updateDisplay();
 }
-
 
 function handleInput(value) {
     if (/^\d$/.test(value)) {
@@ -150,6 +137,42 @@ function handleInput(value) {
     }
 }
 
+function getKeyForKeyboardInput(value) {
+    if (/^\d$/.test(value) || value === ".") {
+        return [...keys].find((key) => key.dataset.value === value);
+    }
+
+    if (["+", "-", "*", "/"].includes(value)) {
+        return [...keys].find((key) => key.dataset.value === value);
+    }
+
+    if (value === "Enter" || value === "=") {
+        return document.querySelector('[data-action="calculate"]');
+    }
+
+    if (value === "Backspace") {
+        return document.querySelector('[data-action="delete"]');
+    }
+
+    if (value === "Escape") {
+        return document.querySelector('[data-action="clear"]');
+    }
+
+    return null;
+}
+
+function animateKeyPress(value) {
+    const key = getKeyForKeyboardInput(value);
+    if (!key) return;
+
+    key.classList.remove("keyboard-active");
+    void key.offsetWidth;
+    key.classList.add("keyboard-active");
+
+    window.setTimeout(() => {
+        key.classList.remove("keyboard-active");
+    }, 130);
+}
 
 keys.forEach((key) => {
     key.addEventListener("click", () => {
@@ -167,20 +190,18 @@ keys.forEach((key) => {
     });
 });
 
-
+// Keyboard input updates the same calculator display as mouse/touch input.
 document.addEventListener("keydown", (event) => {
     const allowedKeys = [
-        "0", "1", "2", "3", "4",
-        "5", "6", "7", "8", "9",
-        ".", "+", "-", "*", "/",
-        "Enter", "Backspace", "Escape"
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+        ".", "+", "-", "*", "/", "Enter", "=", "Backspace", "Escape"
     ];
 
-    if (allowedKeys.includes(event.key)) {
-        event.preventDefault();
-        handleInput(event.key);
-    }
-});
+    if (!allowedKeys.includes(event.key)) return;
 
+    event.preventDefault();
+    animateKeyPress(event.key);
+    handleInput(event.key);
+});
 
 updateDisplay();
