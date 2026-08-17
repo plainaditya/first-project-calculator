@@ -1,8 +1,10 @@
 from datetime import datetime
 
+VALID_OPERATIONS = {"+", "-", "*", "/"}
+
 
 def get_number(prompt):
-    """Keep asking until the user enters a valid number or quits."""
+    """Read a valid number, or return None when the user cancels with q."""
     while True:
         value = input(prompt).strip()
 
@@ -16,105 +18,103 @@ def get_number(prompt):
 
 
 def get_operation():
-    """Return a valid mathematical operation."""
-    valid_operations = {"+", "-", "*", "/"}
-
+    """Read and return a supported mathematical operation."""
     while True:
         operation = input("Operation (+, -, *, /): ").strip()
 
-        if operation in valid_operations:
+        if operation in VALID_OPERATIONS:
             return operation
 
-        print("Invalid operation. Please choose +, -, *, or /.")
+        print("Invalid operation. Choose +, -, *, or /.")
 
 
 def calculate(first_number, second_number, operation):
-    """Perform the selected calculation."""
+    """Perform a calculation and return the numeric result."""
     if operation == "+":
         return first_number + second_number
-
     if operation == "-":
         return first_number - second_number
-
     if operation == "*":
         return first_number * second_number
-
     if operation == "/":
         if second_number == 0:
             raise ZeroDivisionError("Cannot divide by zero.")
         return first_number / second_number
 
+    raise ValueError(f"Unsupported operation: {operation}")
+
 
 def format_number(number):
-    """Remove unnecessary decimal zeros."""
+    """Return a readable representation without unnecessary decimal zeros."""
     return f"{number:g}"
 
 
 def show_history(history):
-    """Display all previous calculations."""
+    """Display previous calculations in chronological order."""
     if not history:
-        print("\nNo calculations have been made yet.\n")
+        print("\nNo calculations have been recorded yet.\n")
         return
 
     print("\n--- Calculation History ---")
-    for calculation in history:
-        print(calculation)
+    for entry in history:
+        print(entry)
     print("---------------------------\n")
 
 
+def calculate_once(history):
+    """Run one calculation and store the result in history."""
+    print("\nEnter 'q' at any number prompt to return to the main menu.")
+
+    first_number = get_number("First number: ")
+    if first_number is None:
+        return
+
+    second_number = get_number("Second number: ")
+    if second_number is None:
+        return
+
+    operation = get_operation()
+
+    try:
+        result = calculate(first_number, second_number, operation)
+    except ZeroDivisionError as error:
+        print(f"\nError: {error}\n")
+        return
+
+    expression = (
+        f"{format_number(first_number)} {operation} "
+        f"{format_number(second_number)} = {format_number(result)}"
+    )
+
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    history.append(f"[{timestamp}] {expression}")
+    print(f"\nResult: {expression}\n")
+
+
 def main():
+    """Run the calculator menu until the user chooses to quit."""
     history = []
 
     print("=" * 36)
-    print("        SIMPLE CALCULATOR")
+    print("          CALCULATOR")
     print("=" * 36)
 
     while True:
-        print("\n[C] Calculate")
+        print("[C] Calculate")
         print("[H] View history")
         print("[Q] Quit")
 
-        choice = input("\nChoose an option: ").strip().lower()
+        choice = input("\nSelect an option: ").strip().lower()
 
-        if choice == "q":
-            print("\nThanks for using the calculator!")
-            break
-
-        if choice == "h":
+        if choice == "c":
+            calculate_once(history)
+        elif choice == "h":
             show_history(history)
-            continue
-
-        if choice != "c":
-            print("Invalid choice. Please select C, H, or Q.")
-            continue
-
-        print("\nType 'q' while entering a number to return to the menu.")
-
-        first_number = get_number("Enter first number: ")
-        if first_number is None:
-            continue
-
-        second_number = get_number("Enter second number: ")
-        if second_number is None:
-            continue
-
-        operation = get_operation()
-
-        try:
-            result = calculate(first_number, second_number, operation)
-
-            expression = (
-                f"{format_number(first_number)} {operation} "
-                f"{format_number(second_number)} = {format_number(result)}"
-            )
-
-            time = datetime.now().strftime("%H:%M:%S")
-            history.append(f"[{time}] {expression}")
-
-            print(f"\nResult: {expression}")
-
-        except ZeroDivisionError as error:
-            print(f"\nError: {error}")
+        elif choice == "q":
+            print("\nCalculator closed. Goodbye.")
+            break
+        else:
+            print("\nInvalid option. Choose C, H, or Q.\n")
 
 
 if __name__ == "__main__":
