@@ -2,6 +2,7 @@ const display = document.getElementById("display");
 const expressionDisplay = document.getElementById("expression");
 const keys = document.querySelectorAll(".key");
 const themeToggle = document.getElementById("themeToggle");
+const themeThumb = themeToggle?.querySelector(".theme-thumb");
 const root = document.documentElement;
 const themeMeta = document.querySelector('meta[name="theme-color"]');
 
@@ -23,7 +24,7 @@ const operatorSymbols = {
     "/": "÷"
 };
 
-function applyTheme(theme) {
+function applyTheme(theme, persist = false) {
     const isLight = theme === "light";
     root.dataset.theme = isLight ? "light" : "dark";
 
@@ -32,8 +33,20 @@ function applyTheme(theme) {
         themeToggle.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode");
     }
 
+    if (themeThumb) {
+        themeThumb.textContent = isLight ? "☀" : "☾";
+    }
+
     if (themeMeta) {
         themeMeta.setAttribute("content", isLight ? "#edf3f8" : "#070b12");
+    }
+
+    if (persist) {
+        try {
+            localStorage.setItem(THEME_KEY, isLight ? "light" : "dark");
+        } catch {
+            // Theme remains active for this session when storage is unavailable.
+        }
     }
 }
 
@@ -47,7 +60,7 @@ function initializeTheme() {
     }
 
     if (savedTheme !== "light" && savedTheme !== "dark") {
-        savedTheme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        savedTheme = window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
     }
 
     applyTheme(savedTheme);
@@ -55,17 +68,10 @@ function initializeTheme() {
 
 function toggleTheme() {
     const nextTheme = root.dataset.theme === "light" ? "dark" : "light";
-    applyTheme(nextTheme);
-
-    try {
-        localStorage.setItem(THEME_KEY, nextTheme);
-    } catch {
-        // Theme still changes for the current session if storage is unavailable.
-    }
+    applyTheme(nextTheme, true);
 }
 
 function updateDisplay() {
-    // Final safety guard: never allow the displayed number to exceed 16 characters.
     if (currentValue !== "Error") {
         currentValue = currentValue.slice(0, MAX_INPUT_LENGTH);
     }
@@ -117,6 +123,8 @@ function calculate(firstNumber, secondNumber, selectedOperator) {
         if (secondNumber === 0) return null;
         return firstNumber / secondNumber;
     }
+
+    return null;
 }
 
 function chooseOperator(nextOperator) {
@@ -202,7 +210,6 @@ function showResult() {
     previousValue = null;
     operator = null;
     waitingForNewNumber = true;
-
     updateDisplay();
 }
 
@@ -218,7 +225,6 @@ function clearCalculator() {
     lastExpression = "";
     lastOperator = null;
     lastOperand = null;
-
     updateDisplay();
 }
 
@@ -227,9 +233,7 @@ function deleteLastCharacter() {
         currentValue = "0";
         waitingForNewNumber = false;
     } else {
-        currentValue = currentValue.length > 1
-            ? currentValue.slice(0, -1)
-            : "0";
+        currentValue = currentValue.length > 1 ? currentValue.slice(0, -1) : "0";
     }
 
     lastExpression = "";
@@ -260,9 +264,15 @@ function flashKey(value) {
     window.setTimeout(() => key.classList.remove("keyboard-active"), 120);
 }
 
-if (themeToggle) {
-    themeToggle.addEventListener("click", toggleTheme);
+function flashAction(action) {
+    const key = document.querySelector(`[data-action="${action}"]`);
+    if (!key) return;
+
+    key.classList.add("keyboard-active");
+    window.setTimeout(() => key.classList.remove("keyboard-active"), 120);
 }
+
+themeToggle?.addEventListener("click", toggleTheme);
 
 keys.forEach((key) => {
     key.addEventListener("click", () => {
@@ -282,10 +292,8 @@ keys.forEach((key) => {
 
 document.addEventListener("keydown", (event) => {
     const allowedKeys = [
-        "0", "1", "2", "3", "4",
-        "5", "6", "7", "8", "9",
-        ".", "+", "-", "*", "/",
-        "Enter", "Backspace", "Escape"
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+        ".", "+", "-", "*", "/", "Enter", "Backspace", "Escape"
     ];
 
     if (!allowedKeys.includes(event.key)) return;
@@ -296,15 +304,11 @@ document.addEventListener("keydown", (event) => {
     if (/^\d$/.test(event.key) || [".", "+", "-", "*", "/"].includes(event.key)) {
         flashKey(event.key);
     } else if (event.key === "Enter") {
-        flashKey("=");
+        flashAction("calculate");
     } else if (event.key === "Backspace") {
-        const key = document.querySelector('[data-action="delete"]');
-        key?.classList.add("keyboard-active");
-        window.setTimeout(() => key?.classList.remove("keyboard-active"), 120);
+        flashAction("delete");
     } else if (event.key === "Escape") {
-        const key = document.querySelector('[data-action="clear"]');
-        key?.classList.add("keyboard-active");
-        window.setTimeout(() => key?.classList.remove("keyboard-active"), 120);
+        flashAction("clear");
     }
 });
 
