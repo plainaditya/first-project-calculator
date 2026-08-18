@@ -93,6 +93,42 @@ function updateDisplay() {
     expressionDisplay.textContent = lastExpression;
     fitDisplayText();
 }
+
+function sanitizeEditableExpression(value) {
+    return String(value)
+        .replace(/[×xX]/g, "*")
+        .replace(/[÷]/g, "/")
+        .replace(/[−–—]/g, "-")
+        .replace(/[^0-9a-zA-Zπ.+\-*/^()!]/g, "");
+}
+function countDigitsPerNumber(value) {
+    return value.split(/[+\-*/^()]/).every(token => token.replace(/[^0-9]/g, "").length <= MAX_INPUT_LENGTH);
+}
+function placeCaretAtEnd() {
+    if (!display) return;
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(display);
+    range.collapse(false);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+}
+function syncEditableDisplay() {
+    if (!display) return;
+    const raw = display.textContent || "";
+    const sanitized = sanitizeEditableExpression(raw);
+    const next = countDigitsPerNumber(sanitized) ? sanitized : expression;
+    if (next !== raw) {
+        display.textContent = next;
+        placeCaretAtEnd();
+    }
+    expression = next;
+    lastExpression = "";
+    repeatExpression = null;
+    justCalculated = false;
+    fitDisplayText();
+}
+
 function currentNumberToken() {
     const match = expression.match(/(?:^|[+\-*/^(])(-?\d*\.?\d*)$/);
     return match ? match[1] : null;
@@ -309,6 +345,19 @@ document.querySelectorAll(".angle-button").forEach(button => button.addEventList
 document.querySelectorAll(".memory-button").forEach(button => button.addEventListener("click", () => handleMemory(button.dataset.memory)));
 historyList?.addEventListener("click", event => { const item = event.target.closest("[data-history-index]"); if (!item) return; const selected = getHistory()[Number(item.dataset.historyIndex)]; if (!selected) return; expression = selected.result.slice(0, MAX_INPUT_LENGTH); lastExpression = selected.expression; repeatExpression = null; justCalculated = false; updateDisplay(); });
 
+display?.addEventListener("input", syncEditableDisplay);
+display?.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        syncEditableDisplay();
+        showResult();
+    } else if (event.key === "Escape") {
+        event.preventDefault();
+        clearCalculator();
+        display.blur();
+    }
+});
+
 keys.forEach(key => key.addEventListener("click", () => {
     const { value, action } = key.dataset;
     if (action === "clear") clearCalculator();
@@ -326,6 +375,7 @@ keys.forEach(key => key.addEventListener("click", () => {
 }));
 
 document.addEventListener("keydown", event => {
+    if (event.target === display || display?.contains(event.target)) return;
     const supported = [..."0123456789.+-*/^()", "Enter", "Backspace", "Escape", "%"];
     if (!supported.includes(event.key)) return;
     event.preventDefault();
