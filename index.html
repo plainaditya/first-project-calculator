@@ -10,116 +10,55 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="Style.css?v=10">
+    <link rel="stylesheet" href="Style.css?v=11">
 </head>
 <body>
     <main class="app-shell">
         <section class="calculator" aria-label="Calculator">
             <header class="calculator-header">
-                <div class="brand-block">
-                    <div class="brand-mark" aria-hidden="true">+</div>
-                    <div>
-                        <p class="eyebrow">Utility</p>
-                        <h1>Calculator</h1>
-                    </div>
-                </div>
-                <div class="header-actions">
-                    <span class="status-pill"><span class="status-dot" aria-hidden="true"></span>Ready</span>
-                    <button class="theme-toggle" id="themeToggle" type="button" role="switch" aria-checked="false" aria-label="Switch to light mode">
-                        <span class="theme-thumb" aria-hidden="true">☾</span>
-                    </button>
-                </div>
+                <div class="brand-block"><div class="brand-mark" aria-hidden="true">+</div><div><p class="eyebrow">Utility</p><h1>Calculator</h1></div></div>
+                <div class="header-actions"><span class="status-pill"><span class="status-dot" aria-hidden="true"></span>Ready</span><button class="theme-toggle" id="themeToggle" type="button" role="switch" aria-checked="false" aria-label="Switch to light mode"><span class="theme-thumb" aria-hidden="true">☾</span></button></div>
             </header>
 
             <div class="mode-bar">
-                <div class="mode-switch" role="group" aria-label="Calculator mode">
-                    <button class="mode-button active" id="basicMode" type="button">Basic</button>
-                    <button class="mode-button" id="scientificMode" type="button">Scientific</button>
-                </div>
+                <div class="mode-switch" role="group" aria-label="Calculator mode"><button class="mode-button active" id="basicMode" type="button">Basic</button><button class="mode-button" id="scientificMode" type="button">Scientific</button></div>
                 <button class="history-button" id="historyToggle" type="button" aria-expanded="false">History <span id="historyCount">0</span></button>
             </div>
 
             <div class="scientific-tools" id="scientificTools" aria-hidden="true">
-                <div class="angle-switch" role="group" aria-label="Angle mode">
-                    <button class="angle-button active" data-angle="DEG" type="button">DEG</button>
-                    <button class="angle-button" data-angle="RAD" type="button">RAD</button>
-                </div>
-                <button class="memory-button" data-memory="MC" type="button">MC</button>
-                <button class="memory-button" data-memory="MR" type="button">MR</button>
-                <button class="memory-button" data-memory="M+" type="button">M+</button>
-                <button class="memory-button" data-memory="M-" type="button">M−</button>
+                <div class="angle-switch" role="group" aria-label="Angle mode"><button class="angle-button active" data-angle="DEG" type="button">DEG</button><button class="angle-button" data-angle="RAD" type="button">RAD</button></div>
+                <button class="memory-button" data-memory="MC" type="button">MC</button><button class="memory-button" data-memory="MR" type="button">MR</button><button class="memory-button" data-memory="M+" type="button">M+</button><button class="memory-button" data-memory="M-" type="button">M−</button>
             </div>
 
             <div class="display-shell" aria-live="polite">
-                <div class="display-topline">
-                    <span class="display-label">Display</span>
-                    <span class="limit-badge">16 max / number</span>
-                </div>
+                <div class="display-topline"><span class="display-label">Display</span><span class="limit-badge">16 max / number</span></div>
                 <div class="display-expression" id="expression" aria-hidden="true"></div>
                 <div class="display" id="display">0</div>
                 <button class="copy-button" id="copyResult" type="button" aria-label="Copy result">Copy</button>
             </div>
 
             <div class="scientific-keys" id="scientificKeys" aria-label="Scientific calculator keys">
-                <button class="key function" data-value="sin(" type="button">sin</button>
-                <button class="key function" data-value="cos(" type="button">cos</button>
-                <button class="key function" data-value="tan(" type="button">tan</button>
-                <button class="key function" data-value="ln(" type="button">ln</button>
-                <button class="key function" data-value="log(" type="button">log</button>
-                <button class="key function" data-value="sqrt(" type="button">√</button>
-                <button class="key function" data-value="^" type="button">xʸ</button>
-                <button class="key function" data-value="!" type="button">x!</button>
-                <button class="key function" data-value="pi" type="button">π</button>
-                <button class="key function" data-value="e" type="button">e</button>
-                <button class="key function" data-value="(" type="button">(</button>
-                <button class="key function" data-value=")" type="button">)</button>
+                <button class="key function" data-value="sin(" type="button">sin</button><button class="key function" data-value="cos(" type="button">cos</button><button class="key function" data-value="tan(" type="button">tan</button><button class="key function" data-value="ln(" type="button">ln</button><button class="key function" data-value="log(" type="button">log</button><button class="key function" data-value="sqrt(" type="button">√</button>
+                <button class="key function" data-value="^" type="button">xʸ</button><button class="key function" data-value="!" type="button">x!</button><button class="key function" data-value="pi" type="button">π</button><button class="key function" data-value="e" type="button">e</button><button class="key function" data-value="(" type="button">(</button><button class="key function" data-value=")" type="button">)</button>
             </div>
 
             <div class="keys" aria-label="Calculator keys">
-                <button class="key clear" type="button" data-action="clear" aria-label="Clear">AC</button>
-                <button class="key utility" type="button" data-action="delete" aria-label="Delete last character">⌫</button>
-                <button class="key operator" type="button" data-value="/" aria-label="Divide">÷</button>
-                <button class="key operator" type="button" data-value="*" aria-label="Multiply">×</button>
-
-                <button class="key" type="button" data-value="7">7</button>
-                <button class="key" type="button" data-value="8">8</button>
-                <button class="key" type="button" data-value="9">9</button>
-                <button class="key operator" type="button" data-value="-" aria-label="Subtract">−</button>
-
-                <button class="key" type="button" data-value="4">4</button>
-                <button class="key" type="button" data-value="5">5</button>
-                <button class="key" type="button" data-value="6">6</button>
-                <button class="key operator" type="button" data-value="+" aria-label="Add">+</button>
-
-                <button class="key" type="button" data-value="1">1</button>
-                <button class="key" type="button" data-value="2">2</button>
-                <button class="key" type="button" data-value="3">3</button>
-                <button class="key equals" type="button" data-action="calculate" aria-label="Equals">=</button>
-
-                <button class="key zero" type="button" data-value="0">0</button>
-                <button class="key" type="button" data-value=".">.</button>
+                <button class="key clear" type="button" data-action="clear" aria-label="Clear">AC</button><button class="key utility" type="button" data-action="delete" aria-label="Delete last character">⌫</button><button class="key utility" type="button" data-action="percent" aria-label="Percentage">%</button><button class="key operator" type="button" data-value="/" aria-label="Divide">÷</button>
+                <button class="key" type="button" data-value="7">7</button><button class="key" type="button" data-value="8">8</button><button class="key" type="button" data-value="9">9</button><button class="key operator" type="button" data-value="*" aria-label="Multiply">×</button>
+                <button class="key" type="button" data-value="4">4</button><button class="key" type="button" data-value="5">5</button><button class="key" type="button" data-value="6">6</button><button class="key operator" type="button" data-value="-" aria-label="Subtract">−</button>
+                <button class="key" type="button" data-value="1">1</button><button class="key" type="button" data-value="2">2</button><button class="key" type="button" data-value="3">3</button><button class="key equals" type="button" data-action="calculate" aria-label="Equals">=</button>
+                <button class="key zero" type="button" data-value="0">0</button><button class="key" type="button" data-value=".">.</button><button class="key operator" type="button" data-value="+" aria-label="Add">+</button>
             </div>
 
             <aside class="history-panel" id="historyPanel" aria-hidden="true">
-                <div class="history-header">
-                    <div>
-                        <p class="eyebrow">Recent</p>
-                        <h2>Calculation history</h2>
-                    </div>
-                    <button id="clearHistory" type="button">Clear</button>
-                </div>
-                <div class="history-list" id="historyList">
-                    <p class="history-empty">Your calculations will appear here.</p>
-                </div>
+                <div class="history-header"><div><p class="eyebrow">Recent</p><h2>Calculation history</h2></div><button id="clearHistory" type="button">Clear</button></div>
+                <div class="history-list" id="historyList"><p class="history-empty">Your calculations will appear here.</p></div>
             </aside>
 
-            <footer class="calculator-footer">
-                <span><kbd>⌨</kbd> Keyboard supported</span>
-                <span><kbd>16</kbd> digits per number · <kbd>Esc</kbd> clear · <kbd>Enter</kbd> calculate</span>
-            </footer>
+            <footer class="calculator-footer"><span><kbd>⌨</kbd> Keyboard supported</span><span><kbd>16</kbd> digits per number · <kbd>Esc</kbd> clear · <kbd>Enter</kbd> calculate</span></footer>
         </section>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="script.js?v=10"></script>
+    <script src="script.js?v=11"></script>
 </body>
 </html>
