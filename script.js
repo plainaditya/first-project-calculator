@@ -71,12 +71,24 @@ function toggleTheme() {
     applyTheme(nextTheme, true);
 }
 
+function fitDisplayText() {
+    if (!display) return;
+
+    const length = currentValue === "Error" ? 5 : currentValue.length;
+
+    // Keep short values large, then smoothly reduce the font size as the
+    // number grows so all 16 allowed characters remain visible at once.
+    const fontSizeRem = Math.max(1.55, Math.min(3, 3.35 - (length * 0.105)));
+    display.style.fontSize = `${fontSizeRem}rem`;
+}
+
 function updateDisplay() {
     if (currentValue !== "Error") {
         currentValue = currentValue.slice(0, MAX_INPUT_LENGTH);
     }
 
     display.textContent = currentValue;
+    fitDisplayText();
 
     if (previousValue !== null && operator) {
         const expressionValue = waitingForNewNumber ? "" : currentValue;
