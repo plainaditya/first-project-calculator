@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="Style.css?v=11">
-    <link rel="stylesheet" href="Display.css?v=1">
+    <link rel="stylesheet" href="Display.css?v=2">
 </head>
 <body>
     <main class="app-shell">
@@ -34,7 +34,7 @@
             <div class="display-shell" aria-live="polite">
                 <div class="display-topline"><span class="display-label">Display</span><span class="limit-badge">16 max / number</span></div>
                 <div class="display-expression" id="expression" aria-hidden="true"></div>
-                <div class="display" id="display">0</div>
+                <div class="display" id="display" contenteditable="true" role="textbox" aria-label="Calculator input. Select or edit any part of the expression." aria-multiline="false" spellcheck="false" autocapitalize="off" autocomplete="off">0</div>
                 <button class="copy-button" id="copyResult" type="button" aria-label="Copy result">Copy</button>
             </div>
 
@@ -60,6 +60,6 @@
         </section>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="script.js?v=11"></script>
+    <script src="script.js?v=12"></script>
 </body>
 </html>
