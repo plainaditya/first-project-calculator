@@ -74,12 +74,39 @@ function toggleTheme() {
 function fitDisplayText() {
     if (!display) return;
 
-    const length = currentValue === "Error" ? 5 : currentValue.length;
+    const value = currentValue === "Error" ? "Error" : currentValue;
+    const length = value.length;
 
-    // Keep short values large, then smoothly reduce the font size as the
-    // number grows so all 16 allowed characters remain visible at once.
-    const fontSizeRem = Math.max(1.55, Math.min(3, 3.35 - (length * 0.105)));
-    display.style.fontSize = `${fontSizeRem}rem`;
+    // Keep short results large. For longer values, measure the actual text and
+    // size it to use almost the entire available display width without overflow.
+    const displayWidth = display.clientWidth;
+    if (!displayWidth || !value) return;
+
+    const styles = window.getComputedStyle(display);
+    const fontFamily = styles.fontFamily;
+    const fontWeight = styles.fontWeight;
+    const letterSpacing = parseFloat(styles.letterSpacing) || 0;
+    const targetWidth = Math.max(0, displayWidth - 4);
+
+    const canvas = fitDisplayText.canvas || (fitDisplayText.canvas = document.createElement("canvas"));
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    let fontSize = Math.min(48, Math.max(28, 48 - Math.max(0, length - 8) * 1.2));
+    context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+
+    const measuredWidth = context.measureText(value).width + Math.max(0, length - 1) * letterSpacing;
+
+    if (measuredWidth > targetWidth) {
+        fontSize *= targetWidth / measuredWidth;
+    } else if (length >= 10) {
+        // If it already fits, grow long values so only a small amount of the
+        // display's left side remains empty.
+        fontSize = Math.min(48, fontSize * Math.min(1.18, targetWidth / measuredWidth));
+    }
+
+    fontSize = Math.max(24, Math.min(48, fontSize));
+    display.style.fontSize = `${fontSize}px`;
 }
 
 function updateDisplay() {
@@ -323,6 +350,8 @@ document.addEventListener("keydown", (event) => {
         flashAction("clear");
     }
 });
+
+window.addEventListener("resize", fitDisplayText);
 
 initializeTheme();
 updateDisplay();
