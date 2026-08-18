@@ -1,4 +1,22 @@
 .display {
     font-weight: 400;
     letter-spacing: -0.04em;
+    caret-color: var(--accent);
+    cursor: text;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.display:focus {
+    outline: none;
+}
+
+.display::selection {
+    background: color-mix(in srgb, var(--accent) 35%, transparent);
+    color: var(--text);
+}
+
+.display::-moz-selection {
+    background: color-mix(in srgb, var(--accent) 35%, transparent);
+    color: var(--text);
 }
