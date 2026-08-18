@@ -4,354 +4,388 @@ const keys = document.querySelectorAll(".key");
 const themeToggle = document.getElementById("themeToggle");
 const themeThumb = themeToggle?.querySelector(".theme-thumb");
 const root = document.documentElement;
-const themeMeta = document.querySelector('meta[name="theme-color"]');
+const themeMeta = document.getElementById("themeColor");
+const basicMode = document.getElementById("basicMode");
+const scientificMode = document.getElementById("scientificMode");
+const historyToggle = document.getElementById("historyToggle");
+const historyPanel = document.getElementById("historyPanel");
+const historyList = document.getElementById("historyList");
+const historyCount = document.getElementById("historyCount");
+const clearHistoryButton = document.getElementById("clearHistory");
+const copyResult = document.getElementById("copyResult");
+const toast = document.getElementById("toast");
 
 const MAX_INPUT_LENGTH = 16;
 const THEME_KEY = "calculator-theme";
+const HISTORY_KEY = "calculator-history";
+const ANGLE_KEY = "calculator-angle";
 
-let currentValue = "0";
-let previousValue = null;
-let operator = null;
-let waitingForNewNumber = false;
+let expression = "";
 let lastExpression = "";
-let lastOperator = null;
-let lastOperand = null;
-
-const operatorSymbols = {
-    "+": "+",
-    "-": "−",
-    "*": "×",
-    "/": "÷"
-};
+let repeatExpression = null;
+let memory = 0;
+let angleMode = "DEG";
+let toastTimer = null;
 
 function applyTheme(theme, persist = false) {
     const isLight = theme === "light";
     root.dataset.theme = isLight ? "light" : "dark";
-
-    if (themeToggle) {
-        themeToggle.setAttribute("aria-checked", String(isLight));
-        themeToggle.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode");
-    }
-
-    if (themeThumb) {
-        themeThumb.textContent = isLight ? "☀" : "☾";
-    }
-
-    if (themeMeta) {
-        themeMeta.setAttribute("content", isLight ? "#edf3f8" : "#070b12");
-    }
-
-    if (persist) {
-        try {
-            localStorage.setItem(THEME_KEY, isLight ? "light" : "dark");
-        } catch {
-            // Theme remains active for this session when storage is unavailable.
-        }
-    }
+    themeToggle?.setAttribute("aria-checked", String(isLight));
+    themeToggle?.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode");
+    if (themeThumb) themeThumb.textContent = isLight ? "☀" : "☾";
+    themeMeta?.setAttribute("content", isLight ? "#edf3f8" : "#070b12");
+    if (persist) localStorage.setItem(THEME_KEY, isLight ? "light" : "dark");
 }
 
 function initializeTheme() {
-    let savedTheme = null;
-
-    try {
-        savedTheme = localStorage.getItem(THEME_KEY);
-    } catch {
-        // Storage may be unavailable in privacy-restricted environments.
-    }
-
-    if (savedTheme !== "light" && savedTheme !== "dark") {
-        savedTheme = window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
-    }
-
-    applyTheme(savedTheme);
+    let saved = null;
+    try { saved = localStorage.getItem(THEME_KEY); } catch {}
+    if (saved !== "light" && saved !== "dark") saved = window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    applyTheme(saved);
 }
 
-function toggleTheme() {
-    const nextTheme = root.dataset.theme === "light" ? "dark" : "light";
-    applyTheme(nextTheme, true);
+function toggleTheme() { applyTheme(root.dataset.theme === "light" ? "dark" : "light", true); }
+
+function setMode(mode) {
+    const scientific = mode === "scientific";
+    root.dataset.mode = scientific ? "scientific" : "basic";
+    basicMode?.classList.toggle("active", !scientific);
+    scientificMode?.classList.toggle("active", scientific);
+    document.getElementById("scientificTools")?.setAttribute("aria-hidden", String(!scientific));
+    document.getElementById("scientificKeys")?.setAttribute("aria-hidden", String(!scientific));
+}
+
+function loadAngleMode() {
+    try { angleMode = localStorage.getItem(ANGLE_KEY) === "RAD" ? "RAD" : "DEG"; } catch { angleMode = "DEG"; }
+    document.querySelectorAll(".angle-button").forEach(button => button.classList.toggle("active", button.dataset.angle === angleMode));
+}
+
+function setAngleMode(mode) {
+    angleMode = mode === "RAD" ? "RAD" : "DEG";
+    try { localStorage.setItem(ANGLE_KEY, angleMode); } catch {}
+    document.querySelectorAll(".angle-button").forEach(button => button.classList.toggle("active", button.dataset.angle === angleMode));
+}
+
+function showToast(message) {
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 1400);
+}
+
+function formatNumber(number) {
+    if (!Number.isFinite(number)) return "Error";
+    return Number(number.toPrecision(12)).toString();
 }
 
 function fitDisplayText() {
     if (!display) return;
-
-    const value = currentValue === "Error" ? "Error" : currentValue;
-    const length = value.length;
-
-    // Keep short results large. For longer values, measure the actual text and
-    // size it to use almost the entire available display width without overflow.
-    const displayWidth = display.clientWidth;
-    if (!displayWidth || !value) return;
-
-    const styles = window.getComputedStyle(display);
-    const fontFamily = styles.fontFamily;
-    const fontWeight = styles.fontWeight;
-    const letterSpacing = parseFloat(styles.letterSpacing) || 0;
-    const targetWidth = Math.max(0, displayWidth - 4);
-
+    const value = display.textContent || "0";
+    const width = display.clientWidth || 420;
     const canvas = fitDisplayText.canvas || (fitDisplayText.canvas = document.createElement("canvas"));
     const context = canvas.getContext("2d");
     if (!context) return;
-
-    let fontSize = Math.min(48, Math.max(28, 48 - Math.max(0, length - 8) * 1.2));
-    context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
-
-    const measuredWidth = context.measureText(value).width + Math.max(0, length - 1) * letterSpacing;
-
-    if (measuredWidth > targetWidth) {
-        fontSize *= targetWidth / measuredWidth;
-    } else if (length >= 10) {
-        // If it already fits, grow long values so only a small amount of the
-        // display's left side remains empty.
-        fontSize = Math.min(48, fontSize * Math.min(1.18, targetWidth / measuredWidth));
-    }
-
-    fontSize = Math.max(24, Math.min(48, fontSize));
-    display.style.fontSize = `${fontSize}px`;
+    const styles = getComputedStyle(display);
+    let size = Math.min(48, Math.max(26, 48 - Math.max(0, value.length - 8) * 1.2));
+    context.font = `${styles.fontWeight} ${size}px ${styles.fontFamily}`;
+    const measured = context.measureText(value).width;
+    if (measured > width - 8) size *= (width - 8) / measured;
+    else if (value.length >= 10) size = Math.min(48, size * Math.min(1.2, (width - 8) / measured));
+    display.style.fontSize = `${Math.max(24, Math.min(48, size))}px`;
 }
 
 function updateDisplay() {
-    if (currentValue !== "Error") {
-        currentValue = currentValue.slice(0, MAX_INPUT_LENGTH);
-    }
-
-    display.textContent = currentValue;
+    display.textContent = expression || "0";
+    expressionDisplay.textContent = lastExpression;
     fitDisplayText();
+}
 
-    if (previousValue !== null && operator) {
-        const expressionValue = waitingForNewNumber ? "" : currentValue;
-        expressionDisplay.textContent = `${formatNumber(previousValue)} ${operatorSymbols[operator]} ${expressionValue}`.trim();
+function currentNumberToken() {
+    const match = expression.match(/(?:^|[+\-*/^(])(-?\d*\.?\d*)$/);
+    return match ? match[1] : null;
+}
+
+function currentDigitCount() {
+    const token = currentNumberToken();
+    return token === null ? 0 : token.replace(".", "").replace("-", "").length;
+}
+
+function appendNumber(value) {
+    if (expression === "Error") expression = "";
+    if (currentDigitCount() >= MAX_INPUT_LENGTH) { showToast("16-digit limit reached"); return; }
+    if (expression === "0") expression = "";
+    expression += value;
+    lastExpression = "";
+    repeatExpression = null;
+    updateDisplay();
+}
+
+function appendDecimal() {
+    const token = currentNumberToken();
+    if (token === null || token.includes(".")) return;
+    if (currentDigitCount() >= MAX_INPUT_LENGTH) return;
+    expression += token === "" || token === "-" ? "0." : ".";
+    repeatExpression = null;
+    updateDisplay();
+}
+
+function appendOperator(op) {
+    if (!expression || expression === "Error") return;
+    if (/[+\-*/^]$/.test(expression)) expression = expression.slice(0, -1) + op;
+    else expression += op;
+    lastExpression = "";
+    repeatExpression = null;
+    updateDisplay();
+}
+
+function appendParenthesis(value) {
+    if (value === "(") {
+        if (expression && /[\d)πe]$/.test(expression)) expression += "*";
+        expression += "(";
     } else {
-        expressionDisplay.textContent = lastExpression;
+        const opens = (expression.match(/\(/g) || []).length;
+        const closes = (expression.match(/\)/g) || []).length;
+        if (opens <= closes || /[+\-*/^(]$/.test(expression)) return;
+        expression += ")";
     }
-}
-
-function inputNumber(number) {
-    if (currentValue === "Error" || waitingForNewNumber) {
-        currentValue = number;
-        waitingForNewNumber = false;
-    } else if (currentValue === "0") {
-        currentValue = number;
-    } else if (currentValue.length < MAX_INPUT_LENGTH) {
-        currentValue += number;
-    }
-
-    currentValue = currentValue.slice(0, MAX_INPUT_LENGTH);
-    lastExpression = "";
+    repeatExpression = null;
     updateDisplay();
 }
 
-function inputDecimal() {
-    if (currentValue === "Error" || waitingForNewNumber) {
-        currentValue = "0.";
-        waitingForNewNumber = false;
-    } else if (!currentValue.includes(".") && currentValue.length < MAX_INPUT_LENGTH) {
-        currentValue += ".";
-    }
-
-    currentValue = currentValue.slice(0, MAX_INPUT_LENGTH);
-    lastExpression = "";
+function appendFunction(fn) {
+    if (expression && /[\d)πe]$/.test(expression)) expression += "*";
+    expression += fn;
+    repeatExpression = null;
     updateDisplay();
 }
 
-function calculate(firstNumber, secondNumber, selectedOperator) {
-    if (selectedOperator === "+") return firstNumber + secondNumber;
-    if (selectedOperator === "-") return firstNumber - secondNumber;
-    if (selectedOperator === "*") return firstNumber * secondNumber;
-
-    if (selectedOperator === "/") {
-        if (secondNumber === 0) return null;
-        return firstNumber / secondNumber;
-    }
-
-    return null;
+function appendConstant(value) {
+    if (expression && /[\d)πe]$/.test(expression)) expression += "*";
+    expression += value;
+    repeatExpression = null;
+    updateDisplay();
 }
 
-function chooseOperator(nextOperator) {
-    const inputValue = Number(currentValue);
+function factorial(n) {
+    if (!Number.isInteger(n) || n < 0 || n > 170) throw new Error("Factorial is limited to 0–170");
+    let result = 1;
+    for (let i = 2; i <= n; i++) result *= i;
+    return result;
+}
 
-    if (currentValue === "Error") return;
-
-    if (operator === null && previousValue === null && waitingForNewNumber) {
-        lastOperator = null;
-        lastOperand = null;
-    }
-
-    if (operator && waitingForNewNumber) {
-        operator = nextOperator;
-        updateDisplay();
-        return;
-    }
-
-    if (previousValue === null) {
-        previousValue = inputValue;
-    } else if (operator) {
-        const result = calculate(previousValue, inputValue, operator);
-
-        if (result === null || !Number.isFinite(result)) {
-            currentValue = "Error";
-            previousValue = null;
-            operator = null;
-            lastExpression = "Calculation error";
-            updateDisplay();
-            return;
+function tokenize(input) {
+    const tokens = [];
+    let i = 0;
+    while (i < input.length) {
+        const c = input[i];
+        if (/\s/.test(c)) { i++; continue; }
+        if (/[0-9.]/.test(c)) {
+            const start = i;
+            while (i < input.length && /[0-9.]/.test(input[i])) i++;
+            const raw = input.slice(start, i);
+            if ((raw.match(/\./g) || []).length > 1 || raw === ".") throw new Error("Invalid number");
+            tokens.push({ type: "number", value: Number(raw) });
+            continue;
         }
-
-        previousValue = result;
-        currentValue = formatNumber(result).slice(0, MAX_INPUT_LENGTH);
+        if (/[a-zA-Zπ]/.test(c)) {
+            const start = i;
+            while (i < input.length && /[a-zA-Zπ]/.test(input[i])) i++;
+            tokens.push({ type: "name", value: input.slice(start, i) });
+            continue;
+        }
+        if ("+-*/^()!".includes(c)) { tokens.push({ type: c, value: c }); i++; continue; }
+        throw new Error("Unknown character");
     }
+    return tokens;
+}
 
-    operator = nextOperator;
-    waitingForNewNumber = true;
-    lastExpression = "";
-    updateDisplay();
+function evaluate(input) {
+    const tokens = tokenize(input);
+    let position = 0;
+    const peek = () => tokens[position];
+    const consume = () => tokens[position++];
+
+    function parseExpression() {
+        let value = parseTerm();
+        while (peek() && (peek().type === "+" || peek().type === "-")) {
+            const op = consume().type;
+            const right = parseTerm();
+            value = op === "+" ? value + right : value - right;
+        }
+        return value;
+    }
+    function parseTerm() {
+        let value = parsePower();
+        while (peek() && (peek().type === "*" || peek().type === "/")) {
+            const op = consume().type;
+            const right = parsePower();
+            if (op === "/" && right === 0) throw new Error("Cannot divide by zero");
+            value = op === "*" ? value * right : value / right;
+        }
+        return value;
+    }
+    function parsePower() {
+        let value = parseUnary();
+        if (peek()?.type === "^") { consume(); value = Math.pow(value, parsePower()); }
+        return value;
+    }
+    function parseUnary() {
+        if (peek()?.type === "+") { consume(); return parseUnary(); }
+        if (peek()?.type === "-") { consume(); return -parseUnary(); }
+        return parsePostfix();
+    }
+    function parsePostfix() {
+        let value = parsePrimary();
+        while (peek()?.type === "!") { consume(); value = factorial(value); }
+        return value;
+    }
+    function parsePrimary() {
+        const token = consume();
+        if (!token) throw new Error("Incomplete expression");
+        if (token.type === "number") return token.value;
+        if (token.type === "(") {
+            const value = parseExpression();
+            if (consume()?.type !== ")") throw new Error("Missing closing parenthesis");
+            return value;
+        }
+        if (token.type === "name") {
+            if (token.value === "π" || token.value === "pi") return Math.PI;
+            if (token.value === "e") return Math.E;
+            const functions = ["sin", "cos", "tan", "ln", "log", "sqrt", "abs"];
+            if (!functions.includes(token.value)) throw new Error("Unknown function");
+            if (consume()?.type !== "(") throw new Error("Function needs parentheses");
+            const arg = parseExpression();
+            if (consume()?.type !== ")") throw new Error("Missing closing parenthesis");
+            return applyFunction(token.value, arg);
+        }
+        throw new Error("Invalid expression");
+    }
+    const result = parseExpression();
+    if (position < tokens.length) throw new Error("Incomplete expression");
+    if (!Number.isFinite(result)) throw new Error("Result is outside the supported range");
+    return result;
+}
+
+function applyFunction(name, value) {
+    const angle = angleMode === "DEG" ? value * Math.PI / 180 : value;
+    if (name === "sin") return Math.sin(angle);
+    if (name === "cos") return Math.cos(angle);
+    if (name === "tan") return Math.tan(angle);
+    if (name === "ln") { if (value <= 0) throw new Error("ln requires a positive value"); return Math.log(value); }
+    if (name === "log") { if (value <= 0) throw new Error("log requires a positive value"); return Math.log10(value); }
+    if (name === "sqrt") { if (value < 0) throw new Error("√ requires a non-negative value"); return Math.sqrt(value); }
+    if (name === "abs") return Math.abs(value);
+    throw new Error("Unknown function");
+}
+
+function getHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; }
+}
+function saveHistory(history) { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 30))); } catch {} }
+function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c])); }
+function renderHistory() {
+    const history = getHistory();
+    historyCount.textContent = history.length;
+    historyList.innerHTML = history.length ? history.map((item, index) => `<button class="history-item" type="button" data-history-index="${index}"><span class="history-expression">${escapeHtml(item.expression)}</span><span class="history-result">${escapeHtml(item.result)}</span></button>`).join("") : '<p class="history-empty">Your calculations will appear here.</p>';
+}
+function addHistory(expressionText, result) {
+    const history = getHistory();
+    history.unshift({ expression: expressionText, result, time: Date.now() });
+    saveHistory(history);
+    renderHistory();
 }
 
 function showResult() {
-    if (!operator && previousValue === null && waitingForNewNumber && lastOperator !== null && lastOperand !== null) {
-        const firstNumber = Number(currentValue);
-        const result = calculate(firstNumber, lastOperand, lastOperator);
-        const expression = `${formatNumber(firstNumber)} ${operatorSymbols[lastOperator]} ${formatNumber(lastOperand)} =`;
-
-        if (result === null || !Number.isFinite(result)) {
-            currentValue = "Error";
-            lastExpression = expression;
-            lastOperator = null;
-            lastOperand = null;
-        } else {
-            currentValue = formatNumber(result).slice(0, MAX_INPUT_LENGTH);
-            lastExpression = expression;
-        }
-
+    if (!expression && repeatExpression) expression = repeatExpression;
+    if (!expression || expression === "Error") return;
+    const calculation = expression;
+    try {
+        const result = formatNumber(evaluate(calculation));
+        lastExpression = `${calculation.replace(/\*/g, "×").replace(/\//g, "÷")} =`;
+        repeatExpression = calculation;
+        expression = result.slice(0, MAX_INPUT_LENGTH);
         updateDisplay();
-        return;
+        addHistory(lastExpression, result);
+    } catch (error) {
+        lastExpression = error.message;
+        expression = "Error";
+        repeatExpression = null;
+        updateDisplay();
+        showToast(error.message);
     }
+}
 
-    if (!operator || waitingForNewNumber || previousValue === null) return;
-
-    const firstNumber = previousValue;
-    const secondNumber = Number(currentValue);
-    const selectedOperator = operator;
-    const result = calculate(firstNumber, secondNumber, selectedOperator);
-    const expression = `${formatNumber(firstNumber)} ${operatorSymbols[selectedOperator]} ${formatNumber(secondNumber)} =`;
-
-    if (result === null || !Number.isFinite(result)) {
-        currentValue = "Error";
-        lastExpression = expression;
-        lastOperator = null;
-        lastOperand = null;
-    } else {
-        currentValue = formatNumber(result).slice(0, MAX_INPUT_LENGTH);
-        lastExpression = expression;
-        lastOperator = selectedOperator;
-        lastOperand = secondNumber;
-    }
-
-    previousValue = null;
-    operator = null;
-    waitingForNewNumber = true;
+function clearCalculator() { expression = ""; lastExpression = ""; repeatExpression = null; updateDisplay(); }
+function deleteLastCharacter() { if (expression === "Error") return clearCalculator(); expression = expression.slice(0, -1); lastExpression = ""; repeatExpression = null; updateDisplay(); }
+function toggleSign() { if (!expression || expression === "Error") return; expression = expression.startsWith("-") ? expression.slice(1) : `-(${expression})`; repeatExpression = null; updateDisplay(); }
+function percentage() {
+    const match = expression.match(/(\d*\.?\d+)$/);
+    if (!match) return;
+    const value = Number(match[1]) / 100;
+    expression = expression.slice(0, -match[1].length) + String(value);
+    repeatExpression = null;
     updateDisplay();
 }
-
-function formatNumber(number) {
-    return Number(number.toFixed(10)).toString();
-}
-
-function clearCalculator() {
-    currentValue = "0";
-    previousValue = null;
-    operator = null;
-    waitingForNewNumber = false;
-    lastExpression = "";
-    lastOperator = null;
-    lastOperand = null;
+function handleMemory(action) {
+    if (action === "MC") memory = 0;
+    if (action === "MR") { const value = formatNumber(memory); if (expression && /[\d)πe]$/.test(expression)) expression += "*"; expression += value; }
+    if (action === "M+") { try { memory += evaluate(expression || "0"); } catch { showToast("Invalid memory value"); } }
+    if (action === "M-") { try { memory -= evaluate(expression || "0"); } catch { showToast("Invalid memory value"); } }
     updateDisplay();
 }
+async function copyCurrentResult() { const value = display.textContent; if (!value || value === "Error") return; try { await navigator.clipboard.writeText(value); showToast("Result copied"); } catch { showToast("Copy unavailable"); } }
+function flashKey(value) { const key = [...keys].find(button => button.dataset.value === value); if (!key) return; key.classList.add("keyboard-active"); setTimeout(() => key.classList.remove("keyboard-active"), 120); }
 
-function deleteLastCharacter() {
-    if (currentValue === "Error" || waitingForNewNumber) {
-        currentValue = "0";
-        waitingForNewNumber = false;
-    } else {
-        currentValue = currentValue.length > 1 ? currentValue.slice(0, -1) : "0";
-    }
-
-    lastExpression = "";
-    updateDisplay();
-}
-
-function handleInput(value) {
-    if (/^\d$/.test(value)) {
-        inputNumber(value);
-    } else if (value === ".") {
-        inputDecimal();
-    } else if (["+", "-", "*", "/"].includes(value)) {
-        chooseOperator(value);
-    } else if (value === "=" || value === "Enter") {
-        showResult();
-    } else if (value === "Backspace") {
-        deleteLastCharacter();
-    } else if (value === "Escape") {
-        clearCalculator();
-    }
-}
-
-function flashKey(value) {
-    const key = [...keys].find((button) => button.dataset.value === value);
-    if (!key) return;
-
-    key.classList.add("keyboard-active");
-    window.setTimeout(() => key.classList.remove("keyboard-active"), 120);
-}
-
-function flashAction(action) {
-    const key = document.querySelector(`[data-action="${action}"]`);
-    if (!key) return;
-
-    key.classList.add("keyboard-active");
-    window.setTimeout(() => key.classList.remove("keyboard-active"), 120);
+function handleKey(value) {
+    if (/^\d$/.test(value)) appendNumber(value);
+    else if (value === ".") appendDecimal();
+    else if (["+","-","*","/","^"].includes(value)) appendOperator(value);
+    else if (value === "(") appendParenthesis("(");
+    else if (value === ")") appendParenthesis(")");
+    else if (value === "Enter" || value === "=") showResult();
+    else if (value === "Backspace") deleteLastCharacter();
+    else if (value === "Escape") clearCalculator();
+    else if (value === "%") percentage();
 }
 
 themeToggle?.addEventListener("click", toggleTheme);
+basicMode?.addEventListener("click", () => setMode("basic"));
+scientificMode?.addEventListener("click", () => setMode("scientific"));
+copyResult?.addEventListener("click", copyCurrentResult);
+historyToggle?.addEventListener("click", () => { const open = !historyPanel.classList.contains("open"); historyPanel.classList.toggle("open", open); historyPanel.setAttribute("aria-hidden", String(!open)); historyToggle.setAttribute("aria-expanded", String(open)); });
+clearHistoryButton?.addEventListener("click", () => { saveHistory([]); renderHistory(); });
+document.querySelectorAll(".angle-button").forEach(button => button.addEventListener("click", () => setAngleMode(button.dataset.angle)));
+document.querySelectorAll(".memory-button").forEach(button => button.addEventListener("click", () => handleMemory(button.dataset.memory)));
+historyList?.addEventListener("click", event => { const item = event.target.closest("[data-history-index]"); if (!item) return; const selected = getHistory()[Number(item.dataset.historyIndex)]; if (!selected) return; expression = selected.result.slice(0, MAX_INPUT_LENGTH); lastExpression = selected.expression; repeatExpression = null; updateDisplay(); });
 
-keys.forEach((key) => {
-    key.addEventListener("click", () => {
-        const { value, action } = key.dataset;
+keys.forEach(key => key.addEventListener("click", () => {
+    const { value, action } = key.dataset;
+    if (action === "clear") clearCalculator();
+    else if (action === "delete") deleteLastCharacter();
+    else if (action === "calculate") showResult();
+    else if (action === "percent") percentage();
+    else if (action === "sign") toggleSign();
+    else if (/^\d$/.test(value)) appendNumber(value);
+    else if (value === ".") appendDecimal();
+    else if (["+","-","*","/","^"].includes(value)) appendOperator(value);
+    else if (value === "(" || value === ")") appendParenthesis(value);
+    else if (value === "pi" || value === "e") appendConstant(value);
+    else if (value?.endsWith("(")) appendFunction(value);
+    else if (value === "!") { if (expression && /[\d)]$/.test(expression)) expression += "!"; updateDisplay(); }
+}));
 
-        if (action === "clear") {
-            clearCalculator();
-        } else if (action === "delete") {
-            deleteLastCharacter();
-        } else if (action === "calculate") {
-            showResult();
-        } else {
-            handleInput(value);
-        }
-    });
-});
-
-document.addEventListener("keydown", (event) => {
-    const allowedKeys = [
-        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-        ".", "+", "-", "*", "/", "Enter", "Backspace", "Escape"
-    ];
-
-    if (!allowedKeys.includes(event.key)) return;
-
+document.addEventListener("keydown", event => {
+    const supported = [..."0123456789.+-*/^()", "Enter", "Backspace", "Escape", "%"];
+    if (!supported.includes(event.key)) return;
     event.preventDefault();
-    handleInput(event.key);
-
-    if (/^\d$/.test(event.key) || [".", "+", "-", "*", "/"].includes(event.key)) {
-        flashKey(event.key);
-    } else if (event.key === "Enter") {
-        flashAction("calculate");
-    } else if (event.key === "Backspace") {
-        flashAction("delete");
-    } else if (event.key === "Escape") {
-        flashAction("clear");
-    }
+    handleKey(event.key);
+    flashKey(event.key);
 });
 
 window.addEventListener("resize", fitDisplayText);
-
 initializeTheme();
+loadAngleMode();
+setMode("basic");
+renderHistory();
 updateDisplay();
